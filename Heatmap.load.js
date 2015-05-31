@@ -131,7 +131,7 @@ ymaps.ready(function () {
             sendAjaxRequest(function(response){
                 heatmap.setData(response);
             }, function(){
-                alert('Ошибка при загрузке файла');
+                alert('К сожалению произошла странная ошибка. Осторожно обновите страницу.');
             });
         };
 
@@ -207,17 +207,17 @@ ymaps.ready(function () {
             return content;
         };
 
-        map.events.add('contextmenu', function (e) {
-            // change cords
-            var coords = e.get('coords');
-
-            getBaloonItems(coords).done(function(items){
-                if(items.length) {
-                    var content = createBalloonContentFrom(items);
-                    map.balloon.open([coords[0].toFixedDown(2), coords[1].toFixedDown(2)], content);
-                }
-            });
-        });
+//        map.events.add('contextmenu', function (e) {
+//            // change cords
+//            var coords = e.get('coords');
+//
+//            getBaloonItems(coords).done(function(items){
+//                if(items.length) {
+//                    var content = createBalloonContentFrom(items);
+//                    map.balloon.open([coords[0].toFixedDown(2), coords[1].toFixedDown(2)], content);
+//                }
+//            });
+//        });
 
         // draw heatmap points when map is loaded
         map.events.fire('boundschange', {'newZoom': DEFAULT_ZOOM, 'delay': false});
