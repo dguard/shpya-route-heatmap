@@ -3,10 +3,9 @@ ymaps.ready(function () {
     var DEFAULT_ZOOM = 4;
     var URL_HEATMAP_POINTS = 'data.json';
     var DELAY_REDRAW = 200000000;
-    var TRUNC_ACCURACY = 0; // used for comparing coordinates on right click
 
     var map = new ymaps.Map('YMapsID', {
-            center: [54.292472, 45.041209],
+            center: [58.634927373343615, 57.1701054234582],
             controls: ['zoomControl', 'typeSelector',  'fullscreenControl'],
             zoom: DEFAULT_ZOOM, type: 'yandex#satellite'
         }),
@@ -118,15 +117,6 @@ ymaps.ready(function () {
             }
         }
 
-        var __baloon_data = [];
-        var setBalloonData = function(data){
-            __baloon_data = data;
-        };
-
-        var getBaloonData = function(){
-            return __baloon_data;
-        };
-
         var redraw = function(params){
             var sendAjaxRequest = function(successCallback, errorCallback){
                 $.ajax({
@@ -139,7 +129,6 @@ ymaps.ready(function () {
             };
 
             sendAjaxRequest(function(response){
-//                setBalloonData(response);
                 heatmap.setData(response);
             }, function(){
                 alert('Ошибка при загрузке файла');
@@ -175,28 +164,32 @@ ymaps.ready(function () {
 
         var getBaloonItems = function(coords){
             var items = [];
-            var data = getBaloonData();
+            var $dfd = $.Deferred();
 
-            for(var i = 0; i < data.length; i++) {
-                var item = data[i];
-
-                for(var j = 0; j < item['points'].length; j++) {
-                    if(item['points'][j][0].toFixedDown(TRUNC_ACCURACY) == coords[0].toFixedDown(TRUNC_ACCURACY)
-                        && item['points'][j][1].toFixedDown(TRUNC_ACCURACY) == coords[1].toFixedDown(TRUNC_ACCURACY)
-                    ) {
-                        items.push({
-                            'route_id': item['route_id'],
-                            'transport_id': item['transport_id'],
-                            'points': [
-                                item['points'][j][0].toFixedDown(3),
-                                item['points'][j][1].toFixedDown(3)
-                            ]
-                        });
-                        break;
-                    }
+            var onSuccess = function(data){
+                for(var i = 0; i < data.length; i++) {
+                    var item = data[i];
+                    items.push({
+                        'route_id': item[0],
+                        'transport_id': item[1]
+                    });
                 }
-            }
-            return items;
+                $dfd.resolve(items);
+            };
+            $.ajax({
+                url: 'info',
+                dataType: 'json',
+                data: {
+                    x: coords[1],
+                    y: coords[0]
+                },
+                success: onSuccess,
+                error: function(){
+                    alert('Ошибка!');
+                    $dfd.fail();
+                }
+            });
+            return $dfd.promise();
         };
 
         var createBalloonContentFrom = function(items) {
@@ -206,8 +199,7 @@ ymaps.ready(function () {
                 if(used_routes.indexOf(items[i].route_id) === -1) {
                     content += [
                         'Маршрут:', items[i].route_id, '<br>',
-                        'Транспорт:', items[i].transport_id, '<br>',
-                        'Координаты:', '['  + items[i].points.join(', ') + ']', '<br><br>'
+                        'Транспорт:', items[i].transport_id, '<br><br>'
                     ].join(' ');
                     used_routes.push(items[i].route_id)
                 }
@@ -218,11 +210,13 @@ ymaps.ready(function () {
         map.events.add('contextmenu', function (e) {
             // change cords
             var coords = e.get('coords');
-            var items = getBaloonItems(coords);
-            if(items.length) {
-                var content = createBalloonContentFrom(items);
-                map.balloon.open([coords[0].toFixedDown(2), coords[1].toFixedDown(2)], content);
-            }
+
+            getBaloonItems(coords).done(function(items){
+                if(items.length) {
+                    var content = createBalloonContentFrom(items);
+                    map.balloon.open([coords[0].toFixedDown(2), coords[1].toFixedDown(2)], content);
+                }
+            });
         });
 
         // draw heatmap points when map is loaded
